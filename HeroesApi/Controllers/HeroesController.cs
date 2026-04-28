@@ -11,11 +11,24 @@ namespace HeroesApi.Controllers;
 public class HeroesController : ControllerBase
 {
     [HttpGet]
-    public ActionResult<List<Hero>> GetAll() 
+public ActionResult<List<Hero>> GetAll([FromQuery] string? universe = null)
+{
+    var heroes = HeroesStore.Heroes.AsEnumerable();
+    
+    if (!string.IsNullOrEmpty(universe))
     {
-        return Ok(HeroesStore.Heroes);
+        if (universe.Equals("Marvel", StringComparison.OrdinalIgnoreCase))
+        {
+            heroes = heroes.Where(h => h.Universe == Universe.Marvel);
+        }
+        else if (universe.Equals("DC", StringComparison.OrdinalIgnoreCase))
+        {
+            heroes = heroes.Where(h => h.Universe == Universe.DC);
+        }
     }
-
+    
+    return Ok(heroes.ToList());
+}
     [HttpGet("{id}")]
     public ActionResult<Hero> GetById(int id) 
     {
@@ -60,7 +73,7 @@ public class HeroesController : ControllerBase
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = true,
-            Converters = {new JsonStringEnumConverter()}
+            Converters = { new JsonStringEnumConverter()}
         };
         var hero = new Hero {
             Id = 99,
@@ -70,7 +83,7 @@ public class HeroesController : ControllerBase
             PowerLevel = 50,
             Powers = new() { "программирование", "дебаггинг"},
             Weapon = new() {Name = "Клавиатура", IsRanged = false },
-            InternalNotes = "Это поле не опадет в JSON"
+            InternalNotes = "Это поле не попадет в JSON"
         };
         string serialized = JsonSerializer.Serialize(hero, options);
         var deserialized = JsonSerializer.Deserialize<Hero>(serialized, options);
@@ -82,6 +95,20 @@ public class HeroesController : ControllerBase
 
         });
     }
+    [HttpGet("search")]
+public ActionResult<List<Hero>> Search([FromQuery] string name)
+{
+    if (string.IsNullOrEmpty(name))
+    {
+        return BadRequest(new { message = "Параметр name обязателен" });
+    }
+    
+    var heroes = HeroesStore.Heroes
+        .Where(h => h.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+    
+    return Ok(heroes);
+}
 }
 
     
